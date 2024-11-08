@@ -1,3 +1,12 @@
+
+export type Comment = {
+  id: number;
+  by: string;
+  time: number;
+  text: string;
+  kids?: number[];
+};
+
 export const fetchComments = async (id: number) => {
   try {
     const cachedComments = localStorage.getItem(`comments-${id}`);

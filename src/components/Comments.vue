@@ -1,7 +1,7 @@
 <script lang="ts">
   import { defineComponent, ref, onMounted } from 'vue';
   import { formatTime } from '../utils/timeFormater'; 
-  import { fetchComments } from '../utils/fetchComments'; 
+  import { fetchComments ,type Comment } from '../utils/fetchComments'; 
   
   export default defineComponent({
     name: 'Comments',
@@ -12,10 +12,10 @@
       },
     },
     components: {
-      Comments: defineComponent(), //Recursive 
+      Comment,
     },
     setup(props) {
-      const comments = ref([]);
+      const comments = ref<Comment[]>([]);
   
       onMounted(async () => {
         comments.value = await fetchComments(props.storyId);
@@ -24,8 +24,9 @@
       return { comments ,formatTime };
     },
   });
+
   </script>
-  
+
 <template>
     <div class="comments-container" v-if="comments.length > 0">
       <ul>

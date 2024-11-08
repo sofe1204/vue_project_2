@@ -11,7 +11,7 @@ export default {
     const topStories = ref<Story[]>([]);
     const searchQuery = ref('');
     const sortOrder = ref('latest');
-    
+
     const { fetchTopStories } = useHackerNewsApi();
     const loading = ref(false);
     const startIndex = ref(0);
@@ -73,14 +73,19 @@ export default {
       );
     });
 
-        const sortedStories = computed(() => {
-        const stories = [...filteredStories.value];
-        if (sortOrder.value === 'latest') {
-          return stories.sort((a, b) => b.time - a.time);
-        }
-        return stories.sort((a, b) => a.time - b.time); 
-      });
+    const sortedStories = computed(() => {
+    const stories = [...filteredStories.value];
+  
+    return stories.sort((a, b) => {
+      const aTime = a.time ?? 0; 
+      const bTime = b.time ?? 0; 
 
+      if (sortOrder.value === 'latest') {
+        return bTime - aTime; 
+      }
+      return aTime - bTime; 
+  });
+});
       return {
       topStories,
       searchQuery,
