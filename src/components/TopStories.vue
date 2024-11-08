@@ -14,12 +14,19 @@
       const loading = ref(false);
       const startIndex = ref(0); 
 
-      onMounted(() => {
-        const storedStories = localStorage.getItem('top-stories');
-        if (storedStories) {
-          topStories.value = JSON.parse(storedStories);
+      const isOnline = ref(navigator.onLine);
+
+      window.addEventListener('online', () => (isOnline.value = true));
+      window.addEventListener('offline', () => (isOnline.value = false));
+
+      onMounted(async () => {
+        if (isOnline.value) {
+          await loadMoreStories();
         } else {
-          loadMoreStories();
+          const storedStories = localStorage.getItem('top-stories');
+          if (storedStories) {
+            topStories.value = JSON.parse(storedStories);
+          }
         }
       });
 
@@ -30,7 +37,8 @@
         try {
           const newStories = await fetchTopStories(startIndex.value);
           topStories.value = [...topStories.value, ...newStories];
-          localStorage.setItem('top-stories', JSON.stringify(topStories.value)); // localStorage
+
+          localStorage.setItem('top-stories', JSON.stringify(topStories.value));
           startIndex.value += newStories.length;
         } catch (error) {
           console.error('Failed to load more stories:', error);
@@ -43,7 +51,7 @@
         const scrollPosition = window.scrollY + window.innerHeight;
         const documentHeight = document.documentElement.scrollHeight;
 
-        if (scrollPosition >= documentHeight - 100 && !loading.value) {
+        if (scrollPosition >= documentHeight - 100 && !loading.value && isOnline.value) {
           loadMoreStories();
         }
       };
@@ -52,7 +60,6 @@
         window.addEventListener('scroll', handleScroll);
       });
 
-      //search 
       const filteredStories = computed(() => {
         if (!searchQuery.value) return topStories.value;
         return topStories.value.filter(story =>
@@ -65,10 +72,12 @@
         searchQuery,
         filteredStories,
         loading,
+        isOnline,
       };
     },
   };
 </script>
+
 
 
 <template>
