@@ -24,11 +24,9 @@ export default {
     onMounted(async () => {
       if (isOnline.value) {
         //console.log('Online: Fetching top stories from live API...');
-
         await loadMoreStories();
       } else {
         //console.log('Offline: Fetching top stories from localStorage...');
-
         const storedStories = localStorage.getItem('top-stories');
         if (storedStories) {
           topStories.value = JSON.parse(storedStories);
