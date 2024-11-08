@@ -31,6 +31,7 @@
       const getHostName = (url: string): string => {
         try {
           const hostname = new URL(url).hostname;
+          //console.log("Parsed hostname:", hostname);
           return hostname.replace('www.', '');
         } catch {
           return '';
@@ -58,7 +59,14 @@
     
 
     <span class="domain">
-      <a :href="'http://' + getHostName(story.data.url ? getHostName(story.data.url) : '')" class="domain-link"> {{ story.data.url ? getHostName(story.data.url) : '' }}</a>
+      <a 
+        :href="'http://' + getHostName(story.data.url ? story.data.url : '')"
+        class="domain-link"
+        target="_blank"
+        rel="noopener noreferrer">
+        {{ story.data.url ? getHostName(story.data.url) : '' }}
+      </a>
+
     </span>
   </span>
   <span class="right-section">

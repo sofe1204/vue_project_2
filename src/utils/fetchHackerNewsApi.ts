@@ -13,7 +13,23 @@ export interface Story {
 export function useHackerNewsApi() {
   const baseUrl = 'https://hacker-news.firebaseio.com/v0';
 
-  async function fetchTopStories(start = 0, limit = 10): Promise<Story[]> {
+  const clearLocalStorage = () => {
+    const lastClearTime = localStorage.getItem('lastClearTime');
+    const currentTime = Date.now();
+    
+    if (lastClearTime && currentTime - parseInt(lastClearTime) >= 21600000) {
+      localStorage.removeItem('top-stories');
+      localStorage.removeItem('lastClearTime');
+      //console.log('Local storage cleared after 6 hours.');
+    } else if (!lastClearTime) {
+      localStorage.setItem('lastClearTime', currentTime.toString());
+    }
+  };
+
+  clearLocalStorage();
+  setInterval(clearLocalStorage, 3600000); 
+
+  async function fetchTopStories(start = 0, limit = 20): Promise<Story[]> {
     try {
       const response = await axios.get<number[]>(`${baseUrl}/topstories.json`);
       const storyIds = response.data.slice(start, start + limit);
@@ -34,5 +50,6 @@ export function useHackerNewsApi() {
 
   return {
     fetchTopStories,
+    clearLocalStorage
   };
 }

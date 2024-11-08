@@ -12,7 +12,8 @@ export default {
     const searchQuery = ref('');
     const sortOrder = ref('latest');
 
-    const { fetchTopStories } = useHackerNewsApi();
+    const { fetchTopStories, clearLocalStorage } = useHackerNewsApi(); 
+
     const loading = ref(false);
     const startIndex = ref(0);
     const isOnline = ref(navigator.onLine);
@@ -22,11 +23,17 @@ export default {
 
     onMounted(async () => {
       if (isOnline.value) {
+        //console.log('Online: Fetching top stories from live API...');
+
         await loadMoreStories();
       } else {
+        //console.log('Offline: Fetching top stories from localStorage...');
+
         const storedStories = localStorage.getItem('top-stories');
         if (storedStories) {
           topStories.value = JSON.parse(storedStories);
+        } else {
+          console.log('No stories found in localStorage.');
         }
       }
     });
@@ -36,12 +43,16 @@ export default {
       loading.value = true;
 
       try {
+        //console.log('Fetching more stories...');
         const newStories = await fetchTopStories(startIndex.value);
         topStories.value = [...topStories.value, ...newStories];
+
+        //console.log('Saving top stories to localStorage...');
 
         localStorage.setItem('top-stories', JSON.stringify(topStories.value));
         startIndex.value += newStories.length;
       } catch (error) {
+
         console.error('Failed to load more stories:', error);
       } finally {
         loading.value = false;
@@ -74,32 +85,32 @@ export default {
     });
 
     const sortedStories = computed(() => {
-    const stories = [...filteredStories.value];
-  
-    return stories.sort((a, b) => {
-      const aTime = a.time ?? 0; 
-      const bTime = b.time ?? 0; 
+      const stories = [...filteredStories.value];
+    
+      return stories.sort((a, b) => {
+        const aTime = a.time ?? 0; 
+        const bTime = b.time ?? 0; 
 
-      if (sortOrder.value === 'latest') {
-        return bTime - aTime; 
-      }
-      return aTime - bTime; 
-  });
-});
-      return {
+        if (sortOrder.value === 'latest') {
+          return bTime - aTime; 
+        }
+        return aTime - bTime; 
+      });
+    });
+
+    return {
       topStories,
       searchQuery,
-      sortedStories,
       sortOrder,
       loading,
-      isOnline,
-  };
+      filteredStories,
+      sortedStories,
+      loadMoreStories,
+      clearLocalStorage,
+    };
   },
 };
 </script>
-
-
-
 
 <template>
  <div class="top-stories-container">
@@ -137,8 +148,8 @@ export default {
     Loading more stories...
   </div>
 </div>
-
 </template>
+
 
 <style scoped>
   .top-stories-container {
