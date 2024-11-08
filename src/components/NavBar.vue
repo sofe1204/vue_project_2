@@ -4,7 +4,7 @@
 <template>
   <nav class="navbar">
     <div class="navbar-logo">
-      <RouterLink to="/TopStories" class="logo-link">Hacker News</RouterLink>
+      <RouterLink to="/TopStories" class="logo-link">Search <br/>Hacker News</RouterLink>
     </div>
     <div class="navbar-links">
       <RouterLink to="#" class="nav-link">All</RouterLink>
@@ -25,7 +25,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 15px 30px;
-  background: linear-gradient(90deg, #ff6600 0%, #ff3b00 100%); 
+  height: 100px;
+  background: rgb(255, 255, 255);
   font-family: 'Roboto', sans-serif;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15); 
   border-radius: 10px;
@@ -35,9 +36,9 @@
 }
 
 .navbar-logo .logo-link {
-  font-size: 26px;
+  font-size: 20px;
   font-weight: 700;
-  color: white;
+  color: rgb(238, 146, 25);
   text-decoration: none;
   letter-spacing: 0.5px;
   text-transform: uppercase;
@@ -59,7 +60,7 @@
 .navbar-links .nav-link {
   font-size: 16px;
   font-weight: 500;
-  color: white;
+  color: rgb(202, 202, 202);
   text-decoration: none;
   text-transform: capitalize;
   transition: color 0.3s ease, transform 0.3s ease;
@@ -92,28 +93,6 @@
 .navbar-links .nav-link:hover::after {
   width: 100%;
   left: 0;
-}
-
-@media (max-width: 768px) {
-  .navbar {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .navbar-links {
-    flex-direction: column;
-    gap: 15px;
-    margin-top: 20px;
-    width: 100%;
-    align-items: flex-start;
-  }
-
-  .navbar-links .nav-link {
-    font-size: 18px;
-    padding: 12px 20px;
-    width: 100%; 
-    text-align: left;
-  }
 }
 
 </style>
