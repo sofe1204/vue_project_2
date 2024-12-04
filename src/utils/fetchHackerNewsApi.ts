@@ -12,24 +12,24 @@ export interface Story {
 
 export function useHackerNewsApi() {
   const baseUrl = 'https://hacker-news.firebaseio.com/v0';
+  const searchApiUrl = 'https://hn.algolia.com/api/v1/search';
 
   const clearLocalStorage = () => {
     const lastClearTime = localStorage.getItem('lastClearTime');
     const currentTime = Date.now();
-    
+
     if (lastClearTime && currentTime - parseInt(lastClearTime) >= 21600000) {
       localStorage.removeItem('top-stories');
       localStorage.removeItem('lastClearTime');
-      //console.log('Local storage cleared after 6 hours.');
     } else if (!lastClearTime) {
       localStorage.setItem('lastClearTime', currentTime.toString());
     }
   };
 
   clearLocalStorage();
-  setInterval(clearLocalStorage, 3600000); 
+  setInterval(clearLocalStorage, 3600000);
 
-  async function fetchTopStories(start = 0, limit = 20): Promise<Story[]> {
+  async function fetchTopStories(start = 0, limit = 10): Promise<Story[]> {
     try {
       const response = await axios.get<number[]>(`${baseUrl}/topstories.json`);
       const storyIds = response.data.slice(start, start + limit);
@@ -48,8 +48,33 @@ export function useHackerNewsApi() {
     }
   }
 
+  async function searchStories(query: string, page = 0): Promise<Story[]> {
+    try {
+      const response = await axios.get(`${searchApiUrl}`, {
+        params: {
+          query,
+          page,
+        },
+      });
+
+      return response.data.hits.map((hit: any) => ({
+        id: hit.objectID,
+        title: hit.title || 'No title available',
+        by: hit.author,
+        url: hit.url,
+        score: hit.points,
+        time: hit.created_at_i,
+        descendants: hit.num_comments,
+      }));
+    } catch (error) {
+      console.error('Error searching stories:', error);
+      throw error;
+    }
+  }
+
   return {
     fetchTopStories,
-    clearLocalStorage
+    searchStories,
+    clearLocalStorage,
   };
 }

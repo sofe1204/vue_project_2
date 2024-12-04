@@ -34,7 +34,7 @@ export const fetchComments = async (id: number) => {
       const commentResponse = await fetch(`https://hacker-news.firebaseio.com/v0/item/${commentId}.json`);
       const comment = await commentResponse.json();
 
-      if (comment.kids && comment.kids.length > 0) {
+      if (comment.kids && comment.kids.length > 1) {
         comment.kids = await Promise.all(comment.kids.map(fetchNestedComments));
       }
 

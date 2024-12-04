@@ -1,5 +1,5 @@
 <script lang="ts">
-import { ref, onMounted, computed, watchEffect } from 'vue';
+import { ref, onMounted, computed ,watchEffect } from 'vue';
 import { useHackerNewsApi, type Story } from '../utils/fetchHackerNewsApi';
 import Item from './Item.vue';
 
@@ -11,22 +11,21 @@ export default {
     const topStories = ref<Story[]>([]);
     const searchQuery = ref('');
     const sortOrder = ref('latest');
-
-    const { fetchTopStories, clearLocalStorage } = useHackerNewsApi(); 
-
     const loading = ref(false);
-    const startIndex = ref(0);
     const isOnline = ref(navigator.onLine);
+    const currentPage = ref(1); 
+    const totalStories = ref(0); 
+    const storiesPerPage = 10; 
+
+    const { fetchTopStories, searchStories, clearLocalStorage } = useHackerNewsApi();
 
     window.addEventListener('online', () => (isOnline.value = true));
     window.addEventListener('offline', () => (isOnline.value = false));
 
     onMounted(async () => {
       if (isOnline.value) {
-        //console.log('Online: Fetching top stories from live API...');
-        await loadMoreStories();
+        await loadStoriesForPage(currentPage.value);
       } else {
-        //console.log('Offline: Fetching top stories from localStorage...');
         const storedStories = localStorage.getItem('top-stories');
         if (storedStories) {
           topStories.value = JSON.parse(storedStories);
@@ -36,39 +35,22 @@ export default {
       }
     });
 
-    const loadMoreStories = async () => {
+    const loadStoriesForPage = async (page: number) => {
       if (loading.value) return;
       loading.value = true;
 
       try {
-        //console.log('Fetching more stories...');
-        const newStories = await fetchTopStories(startIndex.value);
-        topStories.value = [...topStories.value, ...newStories];
-
-        //console.log('Saving top stories to localStorage...');
-
+        const startIndex = (page - 1) * storiesPerPage;
+        const newStories = await fetchTopStories(startIndex);
+        topStories.value = newStories;
+        totalStories.value = 500; 
         localStorage.setItem('top-stories', JSON.stringify(topStories.value));
-        startIndex.value += newStories.length;
       } catch (error) {
-
-        console.error('Failed to load more stories:', error);
+        console.error('Failed to load stories:', error);
       } finally {
         loading.value = false;
       }
     };
-
-    const handleScroll = () => {
-      const scrollPosition = window.scrollY + window.innerHeight;
-      const documentHeight = document.documentElement.scrollHeight;
-
-      if (scrollPosition >= documentHeight - 100 && !loading.value && isOnline.value) {
-        loadMoreStories();
-      }
-    };
-
-    watchEffect(() => {
-      window.addEventListener('scroll', handleScroll);
-    });
 
     const filteredStories = computed(() => {
       if (!searchQuery.value) return topStories.value;
@@ -76,8 +58,8 @@ export default {
       const query = searchQuery.value.toLowerCase();
 
       return topStories.value.filter(story =>
-        story.title.toLowerCase().includes(query) || 
-        story.by.toLowerCase().includes(query) ||  
+        story.title.toLowerCase().includes(query) ||
+        story.by.toLowerCase().includes(query) ||
         (story.url && story.url.toLowerCase().includes(query))
       );
     });
@@ -96,6 +78,28 @@ export default {
       });
     });
 
+    const executeSearch = async () => {
+
+      loading.value = true;
+      try {
+        const searchResults = await searchStories(searchQuery.value);
+        topStories.value = searchResults; 
+      } catch (error) {
+        console.error('Failed to search stories:', error);
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    watchEffect(() => {
+      searchQuery.value && executeSearch(); 
+    });
+
+    const goToPage = async (page: number) => {
+      currentPage.value = page;
+      await loadStoriesForPage(page);
+    };
+
     return {
       topStories,
       searchQuery,
@@ -103,50 +107,77 @@ export default {
       loading,
       filteredStories,
       sortedStories,
-      loadMoreStories,
+      currentPage,
+      storiesPerPage,
+      totalStories,
+      goToPage,
       clearLocalStorage,
+      executeSearch
     };
   },
 };
 </script>
 
+
 <template>
- <div class="top-stories-container">
-  <div class="header-container">
-    <h1 class="page-title">Top News</h1>
-    <div class="navbar-search">
-      <div class="search-wrapper">
-        <img 
-          src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAACXBIWXMAAAsTAAALEwEAmpwYAAADHklEQVR4nO1YO2tUQRQeFd8P3DvnZk0UoqgoREUsRBurFAo2oikUIWIhWPhYxGLNnRkrxS76BwKK4CuktRLSaGk0RomFimiXxjQqe8YjJ5vNzt6s2TxmX/F+sM1e7ne+85g551whEiRIkGBRgEwrkEntIZU6TD0b2+nSjpWikUGZLatRw2mr5WNU8MNqoPgPlXxtlbxJUapDNArIiKWowy7U8lM50WUd0fDHavmEesLtdRbfCqjk4D9EjqGCYdTwEjV8QQW/y2TkJ0bybJ3Ey93xqKOGb6iDLD8r4+yanApOWAX9+Qw4zii4VVvx2U2hKx41ICrQLHJW75vgIGo5FHM+U33lbLxLLHPLhg9szoRH58xjwnVWwYAbhJwJOkW1gRGcLzUKx+fLRRfEcqvhhXMmRvk/v4qnX5VfnehrP+UIY8WgyIuiWsBInnHEf59tzVfk1ZBxsvpeVAtWyUdFQ0HWFy+Z9lWoYbzATZHc5Yu7aESIJW6HLXdVLgTc2Gwxu1dFNZqW26R886OCy8W+IO/55hdkWvY5t8Ub3/w5E55yHHjqm5+bzyEnxa9883MvsVONTT73zS/IpLc6Gfhczf5iFdz3zS94ni/MMDyY0bX0Wp/8PA/Z4mhxR1QDE/P8pBEezPxyw/AU9wK6+4zgZcRJc78vXjLhfqcT/yITbPDFXWooSnWgAltYSniq9MHLh9Y5wH0+OGcwBg+daA3xVLkQPtRBt3O7WYpa9opqgnrS23iTckppgIxYMS8uA0e4ZJz7v1fUArwGxlbDQZ4q58Shg25XfD76sFPUCrFrL78Da8jwYFb5wLo1XxKIUTKyrWZOsGBeamKOjPNghhqu5FR4MqfgGEbhOavhNmr5drro/KVQNydyJuhko7P9pFIiXMleLpv4+1hrJ3gN5E0KFXyo/E2I61728XA49b6RbXV3ogBeRniet1retVo+m6z3BzwecIel63K9KIOGcmK+oGxLGhWMxDL2kW4Em0WzgBInGgS0KDJhyh1sGKnULBveCTJwQDQTaMKJfDmhhndNlYECWDRHvinFJ0iQ4D/CX1S0b2m0Q3GgAAAAAElFTkSuQmCC" 
-          alt="Search" 
-          class="search-icon" 
-        />
-        <input 
-          type="text" 
-          v-model="searchQuery" 
-          placeholder="Search stories by title, url or author" 
-          class="search-input" 
-        />
+  <div class="top-stories-container">
+    <header class="header-container">
+      <h1 class="page-title">Top News</h1>
+      <div class="navbar-search">
+        <div class="search-wrapper">
+          <img 
+            src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAACXBIWXMAAAsTAAALEwEAmpwYAAADHklEQVR4nO1YO2tUQRQeFd8P3DvnZk0UoqgoREUsRBurFAo2oikUIWIhWPhYxGLNnRkrxS76BwKK4CuktRLSaGk0RomFimiXxjQqe8YjJ5vNzt6s2TxmX/F+sM1e7ne+85g551whEiRIkGBRgEwrkEntIZU6TD0b2+nSjpWikUGZLatRw2mr5WNU8MNqoPgPlXxtlbxJUapDNArIiKWowy7U8lM50WUd0fDHavmEesLtdRbfCqjk4D9EjqGCYdTwEjV8QQW/y2TkJ0bybJ3Ey93xqKOGb6iDLD8r4+yanApOWAX9+Qw4zii4VVvx2U2hKx41ICrQLHJW75vgIGo5FHM+U33lbLxLLHPLhg9szoRH58xjwnVWwYAbhJwJOkW1gRGcLzUKx+fLRRfEcqvhhXMmRvk/v4qnX5VfnehrP+UIY8WgyIuiWsBInnHEf59tzVfk1ZBxsvpeVAtWyUdFQ0HWFy+Z9lWoYbzATZHc5Yu7aESIJW6HLXdVLgTc2Gwxu1dFNZqW26R886OCy8W+IO/55hdkWvY5t8Ub3/w5E55yHHjqm5+bzyEnxa9883MvsVONTT73zS/IpLc6Gfhczf5iFdz3zS94ni/MMDyY0bX0Wp/8PA/Z4mhxR1QDE/P8pBEezPxyw/AU9wK6+4zgZcRJc78vXjLhfqcT/yITbPDFXWooSnWgAltYSniq9MHLh9Y5wH0+OGcwBg+daA3xVLkQPtRBt3O7WYpa9opqgnrS23iTckppgIxYMS8uA0e4ZJz7v1fUArwGxlbDQZ4q58Shg25XfD76sFPUCrFrL78Da8jwYFb5wLo1XxKIUTKyrWZOsGBeamKOjPNghhqu5FR4MqfgGEbhOavhNmr5drro/KVQNydyJuhko7P9pFIiXMleLpv4+1hrJ3gN5E0KFXyo/E2I61728XA49b6RbXV3ogBeRniet1retVo+m6z3BzwecIel63K9KIOGcmK+oGxLGhWMxDL2kW4Em0WzgBInGgS0KDJhyh1sGKnULBveCTJwQDQTaMKJfDmhhndNlYECWDRHvinFJ0iQ4D/CX1S0b2m0Q3GgAAAAAElFTkSuQmCC" 
+            alt="Search Icon" 
+            class="search-icon" 
+          />
+          <input 
+            type="text" 
+            v-model="searchQuery" 
+            placeholder="Search stories by title, URL, or author" 
+            class="search-input" 
+            aria-label="Search stories"
+          />
+        </div>
       </div>
-    </div>
-    <div class="filter-container">
-      <label for="sortOrder" class="label-sort-by">Sort By:</label>
-      <select id="sortOrder" v-model="sortOrder" class="sort-select">
-        <option value="latest">Latest First</option>
-        <option value="oldest">Oldest First</option>
-      </select>
-    </div>
+      <div class="filter-container">
+        <label for="sortOrder" class="label-sort-by">Sort By:</label>
+        <select id="sortOrder" v-model="sortOrder" class="sort-select">
+          <option value="latest">Latest First</option>
+          <option value="oldest">Oldest First</option>
+        </select>
+      </div>
+    </header>
+    <main>
+      <ul class="stories-list">
+        <li v-for="story in sortedStories" :key="story.id" class="story-item">
+          <Item :story="{ data: story }" />
+        </li>
+      </ul>
+      <div v-if="loading" class="loading-spinner">
+        Loading stories...
+      </div>
+    </main>
+    <footer class="pagination-container">
+      <button
+        :disabled="currentPage === 1"
+        @click="goToPage(currentPage - 1)"
+        class="pagination-button"
+      >
+        Previous
+      </button>
+      <span >Page {{ currentPage }}</span>
+      <button
+        :disabled="currentPage >= Math.ceil(totalStories / storiesPerPage)"
+        @click="goToPage(currentPage + 1)"
+        class="pagination-button"
+      >
+        Next
+      </button>
+    </footer>
   </div>
-  <ul class="stories-list">
-    <li v-for="story in sortedStories" :key="story.id" class="story-item">
-      <Item :story="{ data: story }" />
-    </li>
-  </ul>
-  <div v-if="loading" class="loading-spinner">
-    Loading more stories...
-  </div>
-</div>
 </template>
+
+
 
 
 <style scoped>
@@ -287,5 +318,36 @@ export default {
 .sort-select:hover {
   background-color: #f1f1f1;
 }
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 20px;
+  gap: 10px;
+  > span{
+    color: black;
+    font-weight: 500;
+  }
+}
+
+.pagination-button {
+  padding: 8px 16px;
+  font-size: 14px;
+  background-color: #007bff;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.pagination-button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.pagination-button:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
 
 </style>
